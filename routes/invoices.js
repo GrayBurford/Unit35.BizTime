@@ -10,7 +10,7 @@ const ExpressError = require("../expressError");
 router.get('/', async (req, res, next) => {
     try {
         const result = await db.query(`SELECT * FROM invoices`);
-        return res.json({ "invoices" : result.rows });
+        return res.json({ "invoices" : result.rows[0] });
     } catch (error) {
         return next(error);
     }
@@ -38,7 +38,7 @@ router.post('/', async (req, res, next) => {
         const { comp_code, amt } = req.body;
         const result = await db.query(`INSERT INTO invoices (comp_code, amt) VALUES ($1, $2) RETURNING id, comp_code, amt, paid, add_date, paid_date`, [comp_code, amt]);
 
-        return res.json({ "invoice" : result.rows[0] });
+        return res.status(201).json({ "invoice" : result.rows[0] });
     } catch (error) {
         return next(error);
     }
@@ -53,6 +53,15 @@ router.patch('/:id', async (req, res, next) => {
 
         if (currQuery.rows.length === 0) {
             throw new ExpressError(`That invoice ID (${id}) doesn't exist or isn't valid. Please try again.`, 404)
+        }
+
+        const currPaidDate = currResult.rows[0].paid_date;
+        if (!currPaidDate && paid) {
+          paidDate = new Date();
+        } else if (!paid) {
+          paidDate = null
+        } else {
+          paidDate = currPaidDate;
         }
 
         const result = await db.query(`UPDATE invoices SET amt=$1 WHERE id=$2 RETURNING id, comp_code, amt, paid, add_date, paid_date`, [amt, id]); 

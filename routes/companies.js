@@ -1,6 +1,7 @@
 
 
 const express = require('express');
+const slugify = require('slugify');
 const ExpressError = require('../expressError');
 let router = new express.Router();
 const db = require('../db');
@@ -9,7 +10,7 @@ const db = require('../db');
 router.get('/', async (request, response, next) => {
     try {
         const dbQuery = await db.query(`SELECT name, description, code FROM companies`);
-        return response.json({ "companies" : dbQuery.rows });
+        return response.json({ "companies" : dbQuery.rows[0] });
     } catch (error) {
         return next(e);
     }
@@ -28,9 +29,9 @@ router.get('/:code', async (request, response, next) => {
             throw new ExpressError(`That company code (${code}) doesn't exist or isn't valid. Please try again.`, 404)
         }
 
-        if (invQuery.rows.length === 0) {
-            throw new ExpressError(`That invoice code (${code}) doesn't exist or isn't valid. Please try again.`, 404)
-        }
+        // if (invQuery.rows.length === 0) {
+        //     throw new ExpressError(`That invoice code (${code}) doesn't exist or isn't valid. Please try again.`, 404)
+        // }
 
         const companyResult = compQuery.rows[0];
         const invoiceResult = invQuery.rows;
@@ -46,9 +47,11 @@ router.get('/:code', async (request, response, next) => {
 
 router.post('/', async (request, response, next) => {
     try {
-        const { code, name, description } = request.body;
+        const { name, description } = request.body;
+        const code = slugify(name, {lower : true});
+        
         const dbQuery = await db.query(`INSERT INTO companies (code, name, description) VALUES ($1, $2, $3) RETURNING code, name, description`, [code, name, description]);
-        return response.status(201).json({ "company" : dbQuery.rows });
+        return response.status(201).json({ "company" : dbQuery.rows[0] });
     } catch (error) {
         return next(error);
     }
@@ -65,7 +68,7 @@ router.patch('/:code', async (request, response, next) => {
         if (dbQuery.rows.length === 0) {
             throw new ExpressError(`That company code (${code}) doesn't exist or isn't valid. Please try again.`, 404)
         }
-        return response.json({ "company" : dbQuery.rows });
+        return response.json({ "company" : dbQuery.rows[0] });
     } catch (error) {
         return next(error);
     }
